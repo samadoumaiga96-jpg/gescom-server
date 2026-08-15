@@ -14,6 +14,18 @@ const { logAudit } = require('../audit');
 
 const router = express.Router();
 
+/* e.message est parfois vide (ex: AggregateError renvoyée par Node lors d'un échec de
+   connexion réseau avec plusieurs adresses candidates — son message propre est souvent
+   vide, le détail utile est dans .errors[]). On journalise tout ce qui peut aider à
+   diagnostiquer plutôt que de se fier au seul .message. */
+function decrireErreur(e){
+  if(!e) return 'erreur inconnue';
+  const parties = [e.name, e.code, e.message].filter(Boolean);
+  if(Array.isArray(e.errors) && e.errors.length){
+    parties.push('causes: ' + e.errors.map(sub => (sub && (sub.code || sub.message)) || String(sub)).join(', '));
+  }
+  return parties.length ? parties.join(' | ') : (e.stack || String(e));
+}
 function emailValide(email){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email||'')); }
 /* Nombre d'appareils autorisés selon la formule (point 17 du cahier des charges —
    architecture prête, sans facturation complète pour l'instant). */
@@ -69,7 +81,7 @@ router.post('/register', async (req, res) => {
     });
   }catch(e){
     if(client){ try{ await client.query('ROLLBACK'); }catch(e2){} }
-    console.error('Erreur /api/auth/register :', e.message);
+    console.error('Erreur /api/auth/register :', decrireErreur(e));
     res.status(500).json({ error: 'Erreur serveur lors de l\'inscription.' });
   }finally{
     if(client) client.release();
@@ -132,7 +144,7 @@ router.post('/login', async (req, res) => {
       device
     });
   }catch(e){
-    console.error('Erreur /api/auth/login :', e.message);
+    console.error('Erreur /api/auth/login :', decrireErreur(e));
     res.status(500).json({ error: 'Erreur serveur lors de la connexion.' });
   }
 });
@@ -154,7 +166,7 @@ router.post('/refresh', async (req, res) => {
     const accessToken = signAccessToken({ accountId: device.account_id, organizationId: device.organization_id, deviceId: device.id });
     res.json({ accessToken });
   }catch(e){
-    console.error('Erreur /api/auth/refresh :', e.message);
+    console.error('Erreur /api/auth/refresh :', decrireErreur(e));
     res.status(500).json({ error: 'Erreur serveur.' });
   }
 });

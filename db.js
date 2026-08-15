@@ -14,7 +14,7 @@ const pool = new Pool({
    fait planter tout le processus (donc aussi le serveur de licences séparé
    qui tourne dans le même processus). */
 pool.on('error', (err) => {
-  console.error('Erreur inattendue sur une connexion PostgreSQL inactive :', err.message);
+  console.error('Erreur inattendue sur une connexion PostgreSQL inactive :', err && (err.message || err.code || err.name) || err);
 });
 
 function query(text, params){
