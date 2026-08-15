@@ -37,6 +37,11 @@ function genererCle(){
 }
 
 const app = express();
+/* Nécessaire derrière un proxy inverse (Render, Railway...) : sans ça, express-rate-limit
+   refuse de démarrer correctement (il ne sait pas s'il peut faire confiance à l'en-tête
+   X-Forwarded-For pour identifier le vrai client). 1 = fait confiance au premier proxy
+   uniquement, ce qui correspond à l'architecture de ces hébergeurs. */
+app.set('trust proxy', 1);
 app.use(cors());
 /* Limite par défaut d'Express (100kb) trop basse pour le profil entreprise (logo, image de
    connexion, cachet, signature en base64 peuvent atteindre plusieurs Mo au total). */
